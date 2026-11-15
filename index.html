@@ -222,16 +222,18 @@
     @page { margin: 0; }
     html, body { background: #fff; color: #000; overflow: visible; height: auto; }
     body > *:not(#recibo) { display: none !important; }
-    #recibo { display: block !important; width: 72mm; max-width: 100%; padding: 2mm 3mm 6mm; font-family: "Consolas", "Courier New", monospace; font-size: 11pt; font-weight: 600; color: #000 !important; background: #fff; }
+    /* Impressora térmica OIA-8383 (POS-58): papel de 58 mm, área útil de 48 mm */
+    #recibo { display: block !important; width: 48mm; max-width: 100%; padding: 0 0 8mm; font-family: "Consolas", "Courier New", monospace; font-size: 9pt; line-height: 1.25; font-weight: 600; color: #000 !important; background: #fff; }
     #recibo * { color: #000 !important; }
     #recibo .via + .via { page-break-before: always; break-before: page; }
     #recibo .c { text-align: center; }
-    #recibo .num { font-size: 28pt; font-weight: 700; text-align: center; margin: 2mm 0; }
-    #recibo hr { border: 0; border-top: 1px dashed #000; margin: 2mm 0; }
-    #recibo .it { display: flex; justify-content: space-between; font-weight: 700; margin-top: 1.5mm; }
-    #recibo .sub { padding-left: 3mm; font-size: 10pt; }
-    #recibo .tot { display: flex; justify-content: space-between; font-size: 13pt; font-weight: 700; }
-    #recibo .pg { text-align: center; font-weight: 700; font-size: 12pt; border: 1px solid #000; padding: 1.5mm; margin-top: 2mm; }
+    #recibo .num { font-size: 22pt; font-weight: 700; text-align: center; margin: 1.5mm 0; }
+    #recibo hr { border: 0; border-top: 1px dashed #000; margin: 1.5mm 0; }
+    #recibo .it { display: flex; justify-content: space-between; gap: 1mm; font-weight: 700; margin-top: 1.2mm; }
+    #recibo .it span:last-child { white-space: nowrap; }
+    #recibo .sub { padding-left: 2mm; font-size: 8.5pt; }
+    #recibo .tot { display: flex; justify-content: space-between; font-size: 11pt; font-weight: 700; }
+    #recibo .pg { text-align: center; font-weight: 700; font-size: 10pt; border: 1px solid #000; padding: 1mm; margin-top: 1.5mm; }
   }
 </style>
 </head>
@@ -2731,7 +2733,7 @@ var qrcode = function() {
   const TEMPO_AVISO = 15;               // segundos do aviso até cancelar
   const TEMPO_FIM = 20;                 // segundos na tela final
   const TEMPO_INATIVO_PIX = 180;        // na tela do Pix o cliente está pagando no celular
-  const VERSAO = "20261115-203837";          // trocado por gerar-totem.py a cada publicação
+  const VERSAO = "20261115-204910";          // trocado por gerar-totem.py a cada publicação
 
   const $ = (s) => document.querySelector(s);
   const $$ = (s) => [...document.querySelectorAll(s)];

@@ -33,6 +33,15 @@
   .rolagem::-webkit-scrollbar { display: none; }
 
   .tela { position: fixed; inset: 0; display: none; flex-direction: column; }
+  #cardapio .corpo { position: relative; }
+  .rolagem.arrastando, .rolagem.arrastando * { cursor: grabbing !important; }
+
+  /* setas de subir/descer (para telas em que o toque vira clique de mouse) */
+  .setas { position: absolute; display: flex; flex-direction: column; gap: 1em; z-index: 5; transform: translateY(-50%); pointer-events: none; }
+  .setas button { pointer-events: auto; width: 3.6em; height: 3.6em; border-radius: 50%; background: #000b; border: 3px solid var(--destaque); color: var(--destaque); font-size: 1.2em; font-weight: 900; box-shadow: 0 6px 20px #0009; display: grid; place-items: center; transition: opacity .2s; }
+  .setas button:active { background: var(--destaque); color: #fff; }
+  .setas button.oculta { opacity: 0; pointer-events: none; }
+  @media (min-width: 701px) { #item .conteudo, .lista, #lista-carrinho, #lista-admin { padding-right: 6em !important; } }
   .tela.ativa { display: flex; }
 
   .btn {
@@ -406,6 +415,7 @@
   // ---------------------------------------------------------------- telas
   const telas = ["inicio", "cardapio", "item", "carrinho", "nome", "pagamento", "fim", "teclado-obs", "admin"];
   function mostrar(id) {
+    setTimeout(atualizarSetas, 30);
     telas.forEach((t) => $("#" + t).classList.toggle("ativa", t === id || (id === "item" && t === "cardapio") || (id === "teclado-obs" && (t === "item" || t === "cardapio"))));
   }
 
@@ -792,6 +802,74 @@
   document.addEventListener("wheel", (e) => { if (e.ctrlKey) e.preventDefault(); }, { passive: false });
   document.addEventListener("gesturestart", (e) => e.preventDefault());
   document.addEventListener("dragstart", (e) => e.preventDefault());
+
+  // ---------------------------------------------------------------- rolagem por arrasto e setas
+  // Alguns totens entregam o toque como clique de mouse; aí a rolagem nativa do dedo não funciona.
+  // Então qualquer ponteiro (mouse, caneta ou toque emulado) que arrastar a lista também rola.
+  let ignorarClique = false;
+  document.addEventListener("click", (e) => { if (ignorarClique) { e.stopPropagation(); e.preventDefault(); ignorarClique = false; } }, true);
+
+  function arrastavel(el, eixo) {
+    const pos = () => (eixo === "x" ? el.scrollLeft : el.scrollTop);
+    const mover = (v) => (eixo === "x" ? (el.scrollLeft = v) : (el.scrollTop = v));
+    let ini = null, inercia = null;
+    el.addEventListener("pointerdown", (e) => {
+      if (e.pointerType === "touch" || e.button !== 0) return;   // toque de verdade já rola sozinho
+      cancelAnimationFrame(inercia);
+      ini = { c: eixo === "x" ? e.clientX : e.clientY, p: pos(), t: performance.now(), v: 0, ultimo: eixo === "x" ? e.clientX : e.clientY, arrastando: false, id: e.pointerId };
+    });
+    el.addEventListener("pointermove", (e) => {
+      if (!ini || e.pointerId !== ini.id) return;
+      const c = eixo === "x" ? e.clientX : e.clientY, d = c - ini.c;
+      if (!ini.arrastando && Math.abs(d) > 8) { ini.arrastando = true; el.classList.add("arrastando"); try { el.setPointerCapture(e.pointerId); } catch (_) {} }
+      if (ini.arrastando) {
+        const agora = performance.now(), dt = Math.max(1, agora - ini.t);
+        ini.v = (c - ini.ultimo) / dt; ini.ultimo = c; ini.t = agora;
+        mover(ini.p - d);
+      }
+    });
+    const soltar = (e) => {
+      if (!ini || e.pointerId !== ini.id) return;
+      if (ini.arrastando) {
+        ignorarClique = true; setTimeout(() => (ignorarClique = false), 0);
+        el.classList.remove("arrastando");
+        let v = -ini.v * 16;                          // continua deslizando um pouco depois de soltar
+        const passo = () => { if (Math.abs(v) < 0.5) return; mover(pos() + v); v *= 0.94; inercia = requestAnimationFrame(passo); };
+        inercia = requestAnimationFrame(passo);
+      }
+      ini = null;
+    };
+    el.addEventListener("pointerup", soltar);
+    el.addEventListener("pointercancel", soltar);
+  }
+
+  const comSetas = [];
+  function setas(el) {
+    const box = document.createElement("div");
+    box.className = "setas";
+    box.innerHTML = '<button aria-label="Subir">▲</button><button aria-label="Descer">▼</button>';
+    el.parentElement.appendChild(box);
+    const [sobe, desce] = box.querySelectorAll("button");
+    sobe.addEventListener("click", (e) => { e.stopPropagation(); el.scrollBy({ top: -el.clientHeight * 0.7, behavior: "smooth" }); });
+    desce.addEventListener("click", (e) => { e.stopPropagation(); el.scrollBy({ top: el.clientHeight * 0.7, behavior: "smooth" }); });
+    const atualizar = () => {
+      if (!el.offsetParent) return;
+      const sobra = el.scrollHeight - el.clientHeight;
+      sobe.classList.toggle("oculta", sobra < 10 || el.scrollTop < 10);
+      desce.classList.toggle("oculta", sobra < 10 || el.scrollTop > sobra - 10);
+      box.style.top = el.offsetTop + el.clientHeight / 2 + "px";
+      box.style.right = el.parentElement.clientWidth - (el.offsetLeft + el.clientWidth) + 16 + "px";
+    };
+    el.addEventListener("scroll", atualizar, { passive: true });
+    comSetas.push(atualizar);
+    return atualizar;
+  }
+  function atualizarSetas() { requestAnimationFrame(() => comSetas.forEach((f) => f())); }
+  window.addEventListener("resize", atualizarSetas);
+  setInterval(atualizarSetas, 700);   // conteúdo muda (itens, grupos, carrinho): reposiciona
+
+  ["#lista", "#item-rolagem", "#lista-carrinho", "#lista-admin"].forEach((sel) => { arrastavel($(sel), "y"); setas($(sel)); });
+  arrastavel($("#categorias"), "x");
 
   // ---------------------------------------------------------------- início
   $("#logo-inicio").src = C.loja.logo;
